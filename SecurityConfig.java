@@ -1,56 +1,53 @@
-package com.dayflow.hrms.security;
+package com.dayflow.hrms.configure;
+
+import com.dayflow.hrms.security.JwtAuthenticationFilter;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-        http
-            // Disable CSRF for REST APIs
-            .csrf(csrf -> csrf.disable())
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter) {
 
-            // Use stateless authentication
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-
-            // Configure URL permissions
-            .authorizeHttpRequests(auth -> auth
-
-                // Public authentication APIs
-                .requestMatchers(
-                    "/api/auth/**",
-                    "/api/register",
-                    "/api/login"
-                ).permitAll()
-
-                // Admin APIs
-                .requestMatchers("/api/admin/**")
-                .hasRole("ADMIN")
-
-                // Employee APIs
-                .requestMatchers("/api/employee/**")
-                .hasAnyRole("EMPLOYEE", "ADMIN")
-
-                // All other requests require authentication
-                .anyRequest()
-                .authenticated()
-            );
-
-        return http.build();
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http) throws Exception {
+
+        http
+                .csrf(csrf -> csrf.disable())
+
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        ))
+
+                .authorizeHttpRequests(auth -> auth
+
+                        .requestMatchers(
+                                "/api/auth/**"
+                        ).permitAll()
+
+                        .anyRequest().authenticated()
+                )
+
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
+
+        return http.build();
     }
 }
